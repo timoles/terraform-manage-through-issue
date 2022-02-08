@@ -1,0 +1,20 @@
+name: Stale repo check
+
+on:
+  schedule:
+    - cron: '0 */3 * * *' # Run every three hours
+
+jobs:
+  stale_issue:
+    # taken from https://github.com/github/docs/blob/6d7b73256f86778cd0e0045d54a6e9acea128ce6/.github/workflows/triage-stale-check.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@cdf15f641adb27a71842045a94023bef6945e3aa
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: '/destroy Server will be shut down due to issue inactivity.'
+          stale-issue-label: 'stale'
+          days-before-issue-stale: 1
+          days-before-issue-close: 1
+          only-issue-labels: deployed
+          

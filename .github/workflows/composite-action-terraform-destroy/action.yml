@@ -1,0 +1,58 @@
+name: "My composite action to terraform destroy"
+description: "Destroy a terraform instance"
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      run: terraform init
+      shell: bash
+
+    - name: Find first comment of github-actions bot
+      uses: peter-evans/find-comment@d2dae40ed151c634e4189471272b57e76ec19ba8
+      id: get_deployed_server_name_from_issue
+      with:
+        issue-number: ${{ github.event.issue.number }}
+        comment-author: github-actions[bot]
+        body-includes: 'Servername:'
+
+    - name: Get Servername to destroy
+      env:
+        BOT_COMMENT_BODY: ${{ steps.get_deployed_server_name_from_issue.outputs.comment-body }}
+      run: |
+        echo $BOT_COMMENT_BODY | cut -d ' ' -f2 | cut -d ':' -f2 | xargs -I {} echo CREATED_SERVERNAME_TO_DESTROY={} >> $GITHUB_ENV
+      shell: bash
+
+    - name: Terraform import
+      run: terraform import -var-file="variables.tfvars" -var cloud_init_user_name="$CLOUD_INIT_USERNAME" -var cloud_init_user_password="$CLOUD_INIT_PASSWORD" -var "hcloud_token=$HCLOUD_SECRET_TOKEN" -var servername="${{ env.CREATED_SERVERNAME_TO_DESTROY }}" hcloud_server.server_workshop_privesc ${{env.CREATED_SERVERNAME_TO_DESTROY}}
+      shell: bash
+
+    - name: Terraform destroy
+      run: terraform destroy -var-file="variables.tfvars" -var cloud_init_user_name="$CLOUD_INIT_USERNAME" -var cloud_init_user_password="$CLOUD_INIT_PASSWORD" -auto-approve -var "hcloud_token=$HCLOUD_SECRET_TOKEN" -var servername="${{ env.CREATED_SERVERNAME_TO_DESTROY }}"  # WARNING CURRENTLY ONLY 1 SERVER IS CREATED
+      shell: bash
+
+    - name: Close issue after destroy
+      # https://octokit.github.io/rest.js/v18#issues
+      uses: actions/github-script@v5
+      with:
+        script: |
+          github.rest.issues.update({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: "closed",
+          });
+
+    - name: Remove deployed label and add destroyed label
+      uses: andymckay/labeler@e6c4322d0397f3240f0e7e30a33b5c5df2d39e90
+      with:
+          add-labels: "destroyed"
+          remove-labels: "deployed"

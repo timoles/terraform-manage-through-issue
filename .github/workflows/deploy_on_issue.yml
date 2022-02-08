@@ -1,0 +1,31 @@
+name: 'Deploy instance on new issue'
+
+on:
+  issues:
+    types:
+    - opened
+
+jobs:
+  terraform_apply:
+    if: startsWith(github.event.issue.body, '/deploy' ) &&  (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'COLLABORATOR')
+
+    name: 'Terraform apply'
+    runs-on: ubuntu-latest
+    environment: production
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Run terraform apply composite action
+      env:
+        HCLOUD_SECRET_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        CLOUD_INIT_USERNAME: ${{ secrets.CLOUD_INIT_USERNAME}}
+        CLOUD_INIT_PASSWORD: ${{ secrets.CLOUD_INIT_PASSWORD}}
+      uses: ./.github/workflows/composite-action-terraform-apply

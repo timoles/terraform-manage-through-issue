@@ -1,0 +1,53 @@
+name: "My composite action to terraform apply"
+description: "Apply/Create a terraform instance"
+
+runs:
+  using: "composite"
+  # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+  steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      run: terraform init
+      shell: bash
+      
+    - name: generate RND_SERVERNAME unique variable based on timestamp
+      run: echo RND_SERVERNAME=terraform-comment-deploy-$(uuidgen) >> $GITHUB_ENV # TODO make better random
+      shell: bash
+      
+    - name: Terraform Plan
+      run: terraform plan -var-file="variables.tfvars" -var cloud_init_user_name="$CLOUD_INIT_USERNAME" -var cloud_init_user_password="$CLOUD_INIT_PASSWORD" -var "servername=${{ env.RND_SERVERNAME }}" -var "hcloud_token=$HCLOUD_SECRET_TOKEN"
+      shell: bash
+      
+      # On push to main, build or change infrastructure according to Terraform configuration files
+      # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -var-file="variables.tfvars" -var cloud_init_user_name="$CLOUD_INIT_USERNAME" -var cloud_init_user_password="$CLOUD_INIT_PASSWORD" -var "servername=${{ env.RND_SERVERNAME }}" -var "hcloud_token=$HCLOUD_SECRET_TOKEN" # WARNING CURRENTLY ONLY 1 SERVER IS CREATED
+      shell: bash
+
+    - name: Get created IP from response
+      id: get_created_ip
+      run: echo "SERVER_CREATED_IP=$(terraform output -raw instance_ip_addr | cut -d ':' -f1 | cut -d ' ' -f1 | xargs -I {} echo SERVER_CREATED_IP={})" >> $GITHUB_ENV # WTF WHY IS THIS XARGS WORKAROUND NECESSARY FFS
+      shell: bash
+
+    - name: Respond with IP
+      uses: actions/github-script@v5
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: "ServerIP:${{ env.SERVER_CREATED_IP }}\nServername:${{ env.RND_SERVERNAME }}",
+          });
+
+    - name: Label issue with deployed
+      uses: andymckay/labeler@e6c4322d0397f3240f0e7e30a33b5c5df2d39e90
+      with:
+          add-labels: "deployed"
