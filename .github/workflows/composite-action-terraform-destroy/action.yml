@@ -32,7 +32,7 @@ runs:
       shell: bash
 
     - name: Terraform import
-      run: terraform import -var-file="variables.tfvars" -var cloud_init_user_name="$CLOUD_INIT_USERNAME" -var cloud_init_user_password="$CLOUD_INIT_PASSWORD" -var "hcloud_token=$HCLOUD_SECRET_TOKEN" -var servername="${{ env.CREATED_SERVERNAME_TO_DESTROY }}" hcloud_server.server_workshop_privesc ${{env.CREATED_SERVERNAME_TO_DESTROY}}
+      run: terraform import -var-file="variables.tfvars" -var cloud_init_user_name="$CLOUD_INIT_USERNAME" -var cloud_init_user_password="$CLOUD_INIT_PASSWORD" -var "hcloud_token=$HCLOUD_SECRET_TOKEN" -var servername="${{ env.CREATED_SERVERNAME_TO_DESTROY }}" hcloud_server.server_spawn_github_action ${{env.CREATED_SERVERNAME_TO_DESTROY}}
       shell: bash
 
     - name: Terraform destroy
