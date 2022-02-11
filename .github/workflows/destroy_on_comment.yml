@@ -7,7 +7,7 @@ on:
 
 jobs:
   terraform_destroy:
-    if: github.event_name == 'issue_comment' && github.event.action == 'created' && startsWith(github.event.comment.body, '/destroy' ) &&  (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'COLLABORATOR')
+    if: github.event_name == 'issue_comment' && github.event.action == 'created' && startsWith(github.event.comment.body, '/destroy' ) &&  (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR' || github.event.comment.user.login == 'github-actions[bot]')
 
     name: 'Terraform destroy'
     runs-on: ubuntu-latest
